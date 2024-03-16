@@ -62,7 +62,7 @@ jobs:
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
           mkdir -p ${{ env.RV_TOOLCHAIN_PREFIX }}${{ env.RV_ARCH_SUFFIX }}/
-          make build-riscv32${{ env.RV_ARCH_SUFFIX }}-tools-bh -j$(nproc) RISCV_GNU_TOOLCHAIN_INSTALL_PREFIX=${{ env.RV_ARCH_SUFFIX }}
+          make build-riscv32${{ env.RV_ARCH_SUFFIX }}-tools-bh -j$(nproc) RISCV_GNU_TOOLCHAIN_GIT_REVISION=${{ env.RV_TOOLCHAIN_REV }} RISCV_GNU_TOOLCHAIN_INSTALL_PREFIX=${{ env.RV_ARCH_SUFFIX }}
 
       - uses: YosysHQ/setup-oss-cad-suite@v3
         with:
