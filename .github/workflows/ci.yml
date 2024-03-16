@@ -35,3 +35,61 @@ jobs:
         run: |
           cd riscv-formal/cores/picorv32
           make check
+
+  make-test:
+    runs-on: ubuntu-latest
+    env:
+      RV_TOOLCHAIN_REV: 411d1345507e5313c3575720f128be9e6c0ed941
+      RV_TOOLCHAIN_PREFIX: ${{ github.workspace }}/.riscv32
+      RV_ARCH_SUFFIX: i
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache toolchain
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with: 
+          path: ${{ env.RV_TOOLCHAIN_PREFIX }}${{ env.RV_ARCH_SUFFIX }}/
+          key: ${{ runner.os }}-${{ env.RV_TOOLCHAIN_REV }}
+
+      - name: Install toolchain prereqs
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev git libexpat1-dev
+
+      - name: Checkout toolchain
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: riscv/riscv-gnu-toolchain
+          ref: ${{ env.RV_TOOLCHAIN_REV }}
+          path: riscv-gnu-toolchain
+          fetch-depth: 0
+
+      - name: Init toolchain submodules
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+        run: |
+          cd riscv-gnu-toolchain
+          git submodule update --init riscv-binutils
+          git submodule update --init riscv-gdb
+          git submodule update --init riscv-gcc
+          git submodule update --init riscv-glibc
+          git submodule update --init riscv-newlib
+
+      - name: Build toolchain
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+        run: |
+          cd riscv-gnu-toolchain
+          mkdir build
+          cd build
+          ../configure --with-arch=rv32${{ env.RV_ARCH_SUFFIX }} --prefix=${{ env.RV_TOOLCHAIN_PREFIX }}${{ env.RV_ARCH_SUFFIX }}
+          make -j$(nproc)
+
+      - uses: YosysHQ/setup-oss-cad-suite@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: make test
+        run: |
+          make test RISCV_GNU_TOOLCHAIN_INSTALL_PREFIX=${{ env.RV_TOOLCHAIN_PREFIX }}
